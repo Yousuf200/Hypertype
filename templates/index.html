@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Typing Test</title>
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #121212;
+        color: #e1e1e1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        font-family: "Courier New", monospace;
+      }
+      .container {
+        text-align: center;
+        width: 80%;
+      }
+      #sentence {
+        white-space: pre-wrap;
+        background-color: transparent;
+        color: #e1e1e1;
+        margin-top: 20px; 
+        font-size: 24px;
+        user-select: none;
+      }
+      #startTestButton {
+        background-color: #333; 
+        color: #e1e1e1;
+        border: 1px solid #444;
+        margin-bottom: 20px;
+        margin-top: 20px;
+      }
+      #startTestButton:hover {
+        background-color: #444; 
+      }
+      .correct {
+        color: #4caf50;
+      }
+      .incorrect {
+        color: #f44336;
+        text-decoration: line-through;
+      }
+      .current {
+        color: #ffeb3b;
+      }
+      #userInput {
+        opacity: 0; 
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        font-size: 24px;
+      }
+      #timer,
+      #results {
+        color: #ffeb3b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Typing Test</h1>
+      <div id="timer">30</div>
+      <button id="startTestButton" class="btn btn-primary mb-2">Start Test</button>
+      <div id="sentence"></div>
+      <input type="text" class="form-control" id="userInput" autofocus/>
+      <div id="results"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+      $(document).ready(function () {
+        const sentenceElement = $("#sentence");
+        const userInput = $("#userInput").prop("disabled", true); 
+        const startTestButton = $("#startTestButton");
+        const resultsElement = $("#results");
+        let timer = 30;
+        let originalSentence = "";
+        let timerInterval;
+
+        function loadSentence() {
+          $.getJSON("/new_sentence", function (data) {
+            originalSentence = data.sentence;
+            displaySentence(originalSentence);
+          });
+          userInput.focus();
+        }
+
+        function displaySentence(sentence) {
+          const words = sentence.split("");
+          sentenceElement.empty();
+          words.forEach((char) => {
+            const span = $("<span>", { text: char });
+            sentenceElement.append(span);
+          });
+        }
+
+        function startTest() {
+          if (timerInterval) clearInterval(timerInterval);
+          timer = 30; 
+          updateTimer();
+          userInput.val("").prop("disabled", false).focus(); 
+          timerInterval = setInterval(() => {
+            timer -= 1;
+            updateTimer();
+            if (timer <= 0) finishTest();
+          }, 1000);
+          userInput.focus();
+        }
+
+
+        function updateTimer() {
+          $("#timer").text(timer);
+        }
+
+    
+        function finishTest() {
+          clearInterval(timerInterval);
+          userInput.prop("disabled", true); 
+          const totalCharsTyped = userInput.val().length;
+          const correctCharsTyped = calculateAccuracy(
+            userInput.val(),
+            originalSentence
+          );
+          const accuracy = (
+            (correctCharsTyped / totalCharsTyped) *
+            100
+          ).toFixed(2);
+          const wordsTyped = userInput.val().split(" ").filter(Boolean).length;
+          const wpm = (wordsTyped / (30 / 60)).toFixed(2); 
+          resultsElement.html(`<p>WPM: ${wpm}, Accuracy: ${accuracy}%</p>`);
+          startTestButton.show(); 
+        }
+
+        function calculateAccuracy(typedText, originalText) {
+          let correctChars = 0;
+          const originalTextArray = originalText.split("");
+          typedText.split("").forEach((char, index) => {
+            if (char === originalTextArray[index]) {
+              correctChars++;
+            }
+          });
+          return correctChars;
+        }
+
+        userInput.on("input", function () {
+          const typedText = $(this).val();
+          highlightText(typedText);
+        });
+
+        function highlightText(typedText) {
+          const sentenceChars = originalSentence.split("");
+          sentenceElement.children().each(function (index) {
+            $(this).removeClass("correct incorrect current");
+            if (index < typedText.length) {
+              $(this).addClass(
+                typedText[index] === sentenceChars[index]
+                  ? "correct"
+                  : "incorrect"
+              );
+            }
+            if (index === typedText.length) {
+              $(this).addClass("current"); 
+            }
+          });
+        }
+
+        startTestButton.click(function () {
+          startTest();
+          $(this).hide(); 
+        });
+
+        loadSentence();
+      });
+    </script>
+  </body>
+</html>
