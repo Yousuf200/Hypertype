@@ -18,7 +18,7 @@ def home():
 
 @app.route('/new_sentence')
 def new_sentence():
-    sentence = ' '.join(random.choices(combined_words, k=30))
+    sentence = ' '.join(random.choices(combined_words, k=150))
     return jsonify(sentence=sentence)
 
 if __name__ == '__main__':
